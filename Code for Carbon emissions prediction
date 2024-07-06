@@ -1,0 +1,261 @@
+#Description of dataset and preprocessing,summary of the dataset
+import pandas as pd
+
+# Load the CSV file
+path = "/content/drive/MyDrive/CO2 Emissions_Canada (1).csv"
+df = pd.read_csv(path)
+df.sample(5)
+
+# computing number of rows
+rows = len(df.axes[0])
+print("number of rows: \n",rows)
+
+# computing number of columns
+cols = len(df.axes[1])
+print("number of columns: \n",cols)
+
+print(df.describe())
+print("\n")
+print(df.columns)
+df.info()
+
+#unique values along with number of times they are repeated
+print(df['Make'].value_counts().head())
+
+import matplotlib.pyplot as plt
+
+# Box Plot
+plt.figure(figsize=(10, 6))
+plt.boxplot([df[df['Make'] == Make]['CO2 Emissions(g/km)'] for Make in df['Make'].unique()], labels=df['Make'].unique())
+plt.title('CO2 Emissions by Car Make (Box Plot)')
+plt.xlabel('Make')
+plt.ylabel('CO2 Emissions(g/km)')
+plt.xticks(rotation=90)
+plt.show()
+
+# Violin Plot
+plt.figure(figsize=(10, 6))
+plt.violinplot([df[df['Make'] == Make]['CO2 Emissions(g/km)'] for Make in df['Make'].unique()], showmeans=False)
+plt.xticks(range(1, len(df['Make'].unique()) + 1), df['Make'].unique(), rotation=90)
+plt.title('CO2 Emissions by Car Make (Violin Plot)')
+plt.xlabel('Car Make')
+plt.ylabel('CO2 Emissions(g/km)')
+plt.show()
+
+print(df['Fuel Type'].value_counts().head())
+
+
+#bar graph for fuel type and emissions
+max_emissions_by_fuel_type = df.groupby("Fuel Type")["CO2 Emissions(g/km)"].max().nlargest()
+plt.figure(figsize=(8, 5))
+max_emissions_by_fuel_type.plot(kind='bar')
+plt.title("Max CO2 Emissions by Fuel Type")
+plt.xlabel("Fuel Type")
+plt.ylabel("Max CO2 Emissions")
+plt.show()
+
+
+print(df['Cylinders'].value_counts().head())
+
+#histogram for cylinders and emissions
+plt.figure(figsize=(10, 6))
+for cylinders_count in df['Cylinders'].unique():
+    plt.hist(df[df['Cylinders'] == cylinders_count]['CO2 Emissions(g/km)'], bins=20, alpha=0.5, label=f'{cylinders_count} Cylinders')
+plt.title('Distribution of CO2 Emissions by Number of Cylinders')
+plt.xlabel('CO2 Emissions')
+plt.ylabel('Frequency')
+plt.legend()
+plt.show()
+
+
+print(df['Transmission'].value_counts().head())
+
+#scatter plot for fuel consumptions and emissions
+plt.figure(figsize=(10, 6))
+plt.scatter(df['Fuel Consumption City (L/100 km)'], df['CO2 Emissions(g/km)'], alpha=0.5)
+plt.title('Scatter Plot: City Fuel Consumption vs CO2 Emissions')
+plt.xlabel('City Fuel Consumption (L/100km)')
+plt.ylabel('CO2 Emissions (g/km)')
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.scatter(df['Fuel Consumption Hwy (L/100 km)'], df['CO2 Emissions(g/km)'], alpha=0.5)
+plt.title('Scatter Plot: Hwy Fuel Consumption vs CO2 Emissions')
+plt.xlabel('Fuel Consumption Hwy (L/100 km)')
+plt.ylabel('CO2 Emissions (g/km)')
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.scatter(df['Fuel Consumption Comb (L/100 km)'], df['CO2 Emissions(g/km)'], alpha=0.5)
+plt.title('Scatter Plot: Hwy+city Fuel Consumption vs CO2 Emissions')
+plt.xlabel('Fuel Consumption Comb (L/100 km)')
+plt.ylabel('CO2 Emissions (g/km)')
+plt.grid(True)
+plt.show()
+
+#fuel consumptipon city Vs hwy scatter plot
+import matplotlib.pyplot as plt
+plt.scatter(df['Fuel Consumption City (L/100 km)'], df['Fuel Consumption Hwy (L/100 km)'])
+plt.xlabel('Fuel Consumption City (L/100 km)')
+_ = plt.ylabel('Fuel Consumption Hwy (L/100 km)')
+
+#By taking predicted values as test values we will predict the train value
+import pandas as pd
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.svm import SVR
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense
+from tensorflow.keras.optimizers import Adam
+
+# Step 1: Data Preprocessing
+df = pd.read_csv("/content/drive/MyDrive/CO2 Emissions_Canada (1).csv")
+
+# Handle missing values (impute with mean, excluding non-numeric columns)
+numeric_cols = df.select_dtypes(include='number').columns
+df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
+
+# One-hot encode categorical variables
+df = pd.get_dummies(df)
+
+# Convert categorical columns to numerical using LabelEncoder
+label_encoders = {}
+for column in df.select_dtypes(include=['object']).columns:
+    label_encoders[column] = LabelEncoder()
+    df[column] = label_encoders[column].fit_transform(df[column])
+
+features = ['Engine Size(L)', 'Cylinders', 'Fuel Consumption Comb (L/100 km)', 'Fuel Consumption Hwy (L/100 km)', 'Fuel Consumption City (L/100 km)']
+target = 'CO2 Emissions(g/km)'
+
+# Split data into features (X) and target variable (y)
+X = df[features]
+y = df[target]
+
+# Standardize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Reshape data for CNN
+X_reshaped = X_scaled.reshape((X_scaled.shape[0], X_scaled.shape[1], 1))
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+X_train_cnn, X_test_cnn = X_train.reshape((X_train.shape[0], X_train.shape[1], 1)), X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
+
+# Step 2: Train Individual Models
+# SVR
+svr = SVR(kernel='rbf')
+svr.fit(X_train, y_train)
+y_pred_svr = svr.predict(X_test)
+r2_svr = r2_score(y_test, y_pred_svr)
+mse_svr = mean_squared_error(y_test, y_pred_svr)
+mae_svr = mean_absolute_error(y_test, y_pred_svr)
+
+# KNN
+knn = KNeighborsRegressor(n_neighbors=5)
+knn.fit(X_train, y_train)
+y_pred_knn = knn.predict(X_test)
+r2_knn = r2_score(y_test, y_pred_knn)
+mse_knn = mean_squared_error(y_test, y_pred_knn)
+mae_knn = mean_absolute_error(y_test, y_pred_knn)
+
+# Gradient Boosting Regressor
+gbr = GradientBoostingRegressor(n_estimators=150, learning_rate=0.1, max_depth=3)
+gbr.fit(X_train, y_train)
+y_pred_gbr = gbr.predict(X_test)
+r2_gbr = r2_score(y_test, y_pred_gbr)
+mse_gbr = mean_squared_error(y_test, y_pred_gbr)
+mae_gbr = mean_absolute_error(y_test, y_pred_gbr)
+
+# CNN
+cnn = Sequential([
+    Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(X_train_cnn.shape[1], 1)),
+    MaxPooling1D(pool_size=2),
+    Flatten(),
+    Dense(50, activation='relu'),
+    Dense(1)
+])
+cnn.compile(optimizer=Adam(learning_rate=0.001), loss='mean_squared_error')
+cnn.fit(X_train_cnn, y_train, epochs=50, batch_size=32, verbose=1)
+y_pred_cnn = cnn.predict(X_test_cnn).flatten()
+r2_cnn = r2_score(y_test, y_pred_cnn)
+mse_cnn = mean_squared_error(y_test, y_pred_cnn)
+mae_cnn = mean_absolute_error(y_test, y_pred_cnn)
+
+# Step 3: Combine Predictions
+# Averaging Ensemble
+y_pred_ensemble = (y_pred_svr + y_pred_knn + y_pred_gbr + y_pred_cnn) / 4
+
+# Evaluate the ensemble model
+r2_ensemble = r2_score(y_test, y_pred_ensemble)
+mse_ensemble = mean_squared_error(y_test, y_pred_ensemble)
+mae_ensemble = mean_absolute_error(y_test, y_pred_ensemble)
+
+print(f"SVR R^2 Score: {r2_svr}")
+print(f"SVR Mean Squared Error: {mse_svr}")
+print(f"SVR Mean Absolute Error: {mae_svr}\n")
+
+print(f"KNN R^2 Score: {r2_knn}")
+print(f"KNN Mean Squared Error: {mse_knn}")
+print(f"KNN Mean Absolute Error: {mae_knn}\n")
+
+print(f"GBR R^2 Score: {r2_gbr}")
+print(f"GBR Mean Squared Error: {mse_gbr}")
+print(f"GBR Mean Absolute Error: {mae_gbr}\n")
+
+print(f"CNN R^2 Score: {r2_cnn}")
+print(f"CNN Mean Squared Error: {mse_cnn}")
+print(f"CNN Mean Absolute Error: {mae_cnn}\n")
+
+print(f"Ensemble R^2 Score: {r2_ensemble}")
+print(f"Ensemble Mean Squared Error: {mse_ensemble}")
+print(f"Ensemble Mean Absolute Error: {mae_ensemble}")
+
+# Plotting true vs predicted values for all models
+plt.figure(figsize=(20, 15))
+
+plt.subplot(2, 3, 1)
+plt.scatter(y_test, y_pred_svr, alpha=0.5)
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("SVR: True vs Predictions")
+
+plt.subplot(2, 3, 2)
+plt.scatter(y_test, y_pred_knn, alpha=0.5)
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("KNN: True vs Predictions")
+
+plt.subplot(2, 3, 3)
+plt.scatter(y_test, y_pred_gbr, alpha=0.5)
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("GBR: True vs Predictions")
+
+plt.subplot(2, 3, 4)
+plt.scatter(y_test, y_pred_cnn, alpha=0.5)
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("CNN: True vs Predictions")
+
+plt.subplot(2, 3, 5)
+plt.scatter(y_test, y_pred_ensemble, alpha=0.5)
+plt.xlabel("True Values")
+plt.ylabel("Predictions")
+plt.title("Ensemble: True vs Predictions")
+
+plt.tight_layout()
+plt.show()
+
+# Difference table for true and predicted values of ensemble
+difference_table = pd.DataFrame({'True Values': y_test, 'Predicted Values': y_pred_ensemble, 'Difference': y_test - y_pred_ensemble})
+print(difference_table.head())
+
